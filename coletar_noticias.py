@@ -27,8 +27,9 @@ SITE_ANTERIOR = os.environ.get("SITE_URL", "").rstrip("/")   # reaproveita a lis
 BUSCAS = [   # Google Notícias, últimas 48 h, em português do Brasil
     '(temporal OR vendaval OR tempestade OR "chuva forte" OR granizo OR ciclone) (energia OR "sem luz" OR "falta de energia")',
     '("falta de energia" OR "sem energia" OR "sem luz" OR "queda de energia") (chuva OR temporal OR vento OR tempestade)',
-    '(Inmet OR "Defesa Civil") (alerta OR aviso) (tempestade OR chuva OR vendaval OR "onda de calor")',
-    '(temporal OR tempestade OR vendaval OR alagamento OR enchente) Brasil',
+    '("chuva forte" OR temporal OR ventania OR vendaval OR granizo OR alagamento) (cidade OR estado OR capital OR moradores OR bairros)',
+    '(previsão OR alerta OR aviso) (chuva OR temporal OR tempestade OR ventania OR "frente fria" OR "onda de calor") (Inmet OR "Defesa Civil" OR Climatempo OR MetSul)',
+    '(ciclone OR "frente fria" OR "massa de ar" OR "onda de calor") (previsão OR estados OR região)',
 ]
 FEEDS = {   # portais gerais (o que não falar de clima é descartado pelo filtro)
     "g1": "https://g1.globo.com/rss/g1/",
@@ -40,11 +41,21 @@ FEEDS = {   # portais gerais (o que não falar de clima é descartado pelo filtr
 def sem_acento(t):
     return "".join(c for c in unicodedata.normalize("NFD", t.lower()) if unicodedata.category(c) != "Mn")
 
-CLIMA = r"temporal|temporais|tempestade|vendaval|ventania|rajada|chuva|chuvas|granizo|ciclone|tornado|alagamento|enchente|inundac|frente fria|onda de calor|calor extremo|raios?\b|descargas? atmosferic|deslizamento|inmet|defesa civil|ressaca|seca\b|estiagem"
-SEVERO = r"temporal|temporais|tempestade|vendaval|ventania|granizo|ciclone|tornado|alagamento|enchente|inundac|onda de calor|calor extremo|deslizamento|alerta|aviso|inmet|defesa civil|emergencia|desabrig|desalojad"
+# o que não é tempo/clima, mesmo usando as mesmas palavras
+EXCLUIR = (r"tempestade (solar|geomagnetic)|vento solar|erupc\w* solar|clima espacial|chuva de (gols|meteoros|estrelas|criticas|dinheiro|votos|likes|prata|ouro|bala|tiros|pedidos)"
+           r"|tempestade perfeita|tempestade (politica|de ideias)|apagao (do|da|no|na|dos) (time|equipe|defesa|ataque|jogo|clube|selecao|goleiro)"
+           r"|clima (de|entre|tenso|politico|eleitoral|organizacional)|previsao do (horoscopo|signo)|horoscopo")
+TEMPO = (r"chuva|chuvas|chuvoso|temporal|temporais|tempestade|vendaval|ventania|rajada|granizo|ciclone|tornado|alagamento|alagad|enchente"
+         r"|inundac|frente fria|onda de calor|calor extremo|massa de ar|raios\b|descargas? atmosferic|deslizamento|nevoeiro|geada|neve\b"
+         r"|frio intenso|baixa umidade|estiagem|seca\b|tempo (instavel|severo|seco)|calor\b|previsao do tempo")
+FORTE = (r"chuva (forte|intensa|volumosa|torrencial|de granizo|extrema)|chuvas? (fortes|intensas|volumosas)|temporal|temporais|tempestade|vendaval"
+         r"|ventania|rajada|granizo|ciclone|tornado|alagamento|alagad|enchente|inundac|frente fria|onda de calor|calor extremo|deslizamento"
+         r"|alerta|aviso|previsao|inmet|defesa civil|desabrig|desalojad|emergencia|calamidade|tempo (instavel|severo)|acumulado|milimetros|\bmm\b"
+         r"|calor (forte|intenso|extremo)|\d+ ?(°|graus)")
 FALTA = r"falta de (energia|luz)|sem (energia|luz)|queda de energia|apagao|interrupc\w* (de|no) (energia|fornecimento)|fornecimento de energia|religad|restabelec|desligamento"
-DISTRIB = r"enel|light\b|cemig|copel|ceee|equatorial|energisa|neoenergia|coelba|cosern|celpe|cpfl|rge\b|celesc|edp\b|amazonas energia|elektro|eletropaulo|distribuidora"
-ALERTA = r"\binmet\b|defesa civil|alerta (amarelo|laranja|vermelho)|aviso (amarelo|laranja|vermelho)|\balerta\b|\baviso\b"
+DISTRIB = r"enel|light\b|cemig|copel|ceee|equatorial|energisa|neoenergia|coelba|cosern|celpe|cpfl|rge\b|celesc|edp\b|amazonas energia|elektro|distribuidora"
+ALERTA = r"\binmet\b|defesa civil|alerta|aviso (amarelo|laranja|vermelho|meteorologico|de)"
+LOCAL = r"\bcidade|\bestado|\bcapital|\bbairro|moradores|litoral|interior|regiao (sul|sudeste|norte|nordeste|centro|metropolitana|serrana)|\bsul\b|sudeste|nordeste|centro-oeste|\bnorte\b"
 ESTADOS = [("rio grande do sul", "RS"), ("rio grande do norte", "RN"), ("mato grosso do sul", "MS"), ("mato grosso", "MT"),
     ("santa catarina", "SC"), ("sao paulo", "SP"), ("rio de janeiro", "RJ"), ("minas gerais", "MG"), ("espirito santo", "ES"),
     ("parana", "PR"), ("goias", "GO"), ("distrito federal", "DF"), ("brasilia", "DF"), ("bahia", "BA"), ("sergipe", "SE"),
@@ -52,7 +63,11 @@ ESTADOS = [("rio grande do sul", "RS"), ("rio grande do norte", "RN"), ("mato gr
     ("tocantins", "TO"), ("amapa", "AP"), ("roraima", "RR"), ("rondonia", "RO"), ("acre", "AC"), ("amazonas", "AM"),
     ("porto alegre", "RS"), ("florianopolis", "SC"), ("curitiba", "PR"), ("belo horizonte", "MG"),
     ("salvador", "BA"), ("recife", "PE"), ("fortaleza", "CE"), ("manaus", "AM"), ("belem", "PA"),
-    ("goiania", "GO"), ("campo grande", "MS"), ("cuiaba", "MT"), ("baixada fluminense", "RJ"), ("grande sp", "SP")]
+    ("goiania", "GO"), ("campo grande", "MS"), ("cuiaba", "MT"), ("baixada fluminense", "RJ"), ("grande sp", "SP"),
+    ("sao luis", "MA"), ("teresina", "PI"), ("natal", "RN"), ("joao pessoa", "PB"), ("maceio", "AL"), ("aracaju", "SE"),
+    ("palmas", "TO"), ("porto velho", "RO"), ("rio branco", "AC"), ("boa vista", "RR"), ("macapa", "AP"), ("campinas", "SP"),
+    ("santos", "SP"), ("niteroi", "RJ"), ("petropolis", "RJ"), ("joinville", "SC"), ("blumenau", "SC"), ("londrina", "PR"),
+    ("caxias do sul", "RS"), ("pelotas", "RS"), ("uberlandia", "MG"), ("juiz de fora", "MG"), ("feira de santana", "BA"), ("serra gaucha", "RS")]
 
 def baixar(url, tempo=30):
     pedido = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/rss+xml, application/xml, */*"})
@@ -67,17 +82,26 @@ def data_rss(texto):
         return None
 
 def classificar(titulo):
+    """Devolve (tipo, uf, prioridade) ou None.
+    prioridade 3 = falta de energia ligada a tempo/rede; 2 = tempo severo/previsão com lugar ou alerta;
+    1 = clima em geral (vai só para a lista completa)."""
     t = sem_acento(titulo)
-    clima, severo, falta = re.search(CLIMA, t), re.search(SEVERO, t), re.search(FALTA, t)
-    distrib, energia_palavra = re.search(DISTRIB, t), re.search(r"energia|eletric", t)
-    if falta and (clima or distrib or energia_palavra) and not re.search(r"apagao (do|da|no|na) (time|equipe|defesa|ataque|jogo)", t):
-        tipo = "energia"
-    elif clima and severo:
-        tipo = "alerta" if re.search(ALERTA, t) else "clima"
-    else:
+    if re.search(EXCLUIR, t):
         return None
+    tempo, forte, falta = re.search(TEMPO, t), re.search(FORTE, t), re.search(FALTA, t)
+    distrib, energia_palavra = re.search(DISTRIB, t), re.search(r"energia|eletric", t)
     uf = next((sigla for nome, sigla in ESTADOS if re.search(r"\b" + nome, t)), None)
-    return tipo, uf
+    if not uf:   # sigla escrita no título ("no RS", "em SP")
+        m = re.search(r"\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b", titulo)
+        uf = m.group(1) if m else None
+    if falta and (tempo or distrib or energia_palavra):
+        return "energia", uf, 3
+    if not tempo:
+        return None
+    tipo = "alerta" if re.search(ALERTA, t) else "clima"
+    if uf or (forte and (re.search(LOCAL, t) or tipo == "alerta")):   # tempo num lugar, ou alerta/tempo severo regional
+        return tipo, uf, 2
+    return tipo, uf, 1
 
 def itens_rss(conteudo, fonte_padrao=None):
     raiz = ET.fromstring(conteudo)
@@ -125,7 +149,7 @@ def coletar():
         if not c:
             continue
         vistos.add(k)
-        n["tipo"], n["uf"] = c
+        n["tipo"], n["uf"], n["prioridade"] = c
         n["data"] = n["data"].astimezone(timezone(timedelta(hours=-3))).isoformat(timespec="minutes")
         itens.append(n)
         if len(itens) >= MAXIMO:
