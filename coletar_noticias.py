@@ -52,6 +52,16 @@ FORTE = (r"chuva (forte|intensa|volumosa|torrencial|de granizo|extrema)|chuvas? 
          r"|ventania|rajada|granizo|ciclone|tornado|alagamento|alagad|enchente|inundac|frente fria|onda de calor|calor extremo|deslizamento"
          r"|alerta|aviso|previsao|inmet|defesa civil|desabrig|desalojad|emergencia|calamidade|tempo (instavel|severo)|acumulado|milimetros|\bmm\b"
          r"|calor (forte|intenso|extremo)|\d+ ?(°|graus)")
+# notícia de fora do Brasil (só entra se citar também um lugar do Brasil)
+EXTERIOR = (r"\beua\b|estados unidos|american[oa]s?\b|nova york|california|florida|texas|luisiana|carolina do|alasca|havai|washington|chicago"
+            r"|canada|mexic|caribe|cuba\b|haiti|porto rico|jamaica|bahamas|republica dominicana|honduras|guatemala|nicaragua|panama\b"
+            r"|argentin|buenos aires|chile|uruguai|montevideu|paraguai|bolivia|peru\b|peruan|colombia|venezuel|equador\b"
+            r"|europa|europe|espanha|valencia|portugal|lisboa|italia|franca|frances|alemanha|reino unido|inglaterra|londres|irlanda|holanda"
+            r"|belgica|suica|austria|grecia|turquia|russia|ucrania|polonia|escandinav|noruega|suecia"
+            r"|china|chines|japao|japones|coreia|india\b|indian[oa]|paquistao|bangladesh|filipinas|indonesia|vietna|tailandia|taiwan|hong kong"
+            r"|australia|nova zelandia|africa|mocambique|angola|nigeria|marrocos|egito|oriente medio|israel|gaza|ira\b|iraque|arabia|dubai|emirados"
+            r"|furacao|tufao|moncao|paris\b|roma\b|madri|toquio|pequim|xangai|miami|los angeles|nova orleans|berlim|moscou|kiev|mumbai|nova delhi|sydney")
+BRASIL = r"brasil|brasileir|\bpais\b"
 FALTA = r"falta de (energia|luz)|sem (energia|luz)|queda de energia|apagao|interrupc\w* (de|no) (energia|fornecimento)|fornecimento de energia|religad|restabelec|desligamento"
 DISTRIB = r"enel|light\b|cemig|copel|ceee|equatorial|energisa|neoenergia|coelba|cosern|celpe|cpfl|rge\b|celesc|edp\b|amazonas energia|elektro|distribuidora"
 ALERTA = r"\binmet\b|defesa civil|alerta|aviso (amarelo|laranja|vermelho|meteorologico|de)"
@@ -94,12 +104,14 @@ def classificar(titulo):
     if not uf:   # sigla escrita no título ("no RS", "em SP")
         m = re.search(r"\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b", titulo)
         uf = m.group(1) if m else None
+    if re.search(EXTERIOR, t) and not (uf or re.search(BRASIL, t)):   # só Brasil
+        return None
     if falta and (tempo or distrib or energia_palavra):
         return "energia", uf, 3
     if not tempo:
         return None
     tipo = "alerta" if re.search(ALERTA, t) else "clima"
-    if uf or (forte and (re.search(LOCAL, t) or tipo == "alerta")):   # tempo num lugar, ou alerta/tempo severo regional
+    if uf or (forte and (re.search(LOCAL, t) or re.search(BRASIL, t) or tipo == "alerta")):   # tempo num lugar, ou alerta/tempo severo regional
         return tipo, uf, 2
     return tipo, uf, 1
 
